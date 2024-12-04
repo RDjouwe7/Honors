@@ -1,4 +1,3 @@
-
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -7,6 +6,7 @@ import javax.imageio.ImageIO;
 public class Player extends Entity {
     GamePanel gp;
     KeyHandler keyH;
+    private boolean isGameOver; // Tracks if the player is in a game-over state
 
     public Player(GamePanel gp, KeyHandler keyH) {
         this.gp = gp;
@@ -21,6 +21,7 @@ public class Player extends Entity {
         y = 100;
         speed = 4;
         direction = "down";
+        isGameOver = false; // Initialize game-over state to false
     }
 
     public void getPlayerImage() {
@@ -39,7 +40,7 @@ public class Player extends Entity {
     }
 
     public void update() {
-        if (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
+        if (!isGameOver && (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed)) {
             int nextX = x;
             int nextY = y;
 
@@ -98,7 +99,18 @@ public class Player extends Entity {
 
         g2.drawImage(image, x, y, gp.tilesize, gp.tilesize, null);
     }
+
+    // Sets the game-over state
+    public void setGameOver(boolean isGameOver) {
+        this.isGameOver = isGameOver;
+    }
+
+    // Gets the current game-over state
+    public boolean isGameOver() {
+        return isGameOver;
+    }
 }
+
 
 
 /*import java.awt.Graphics2D;
