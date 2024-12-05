@@ -6,8 +6,8 @@ import java.awt.Font;
 import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 import java.util.ArrayList;
-import java.util.Random;
 import java.awt.Point;
+import java.util.Random;
 
 public class GamePanel extends JPanel implements Runnable {
     // Screen settings
@@ -28,6 +28,7 @@ public class GamePanel extends JPanel implements Runnable {
     Player player;
     public ArrayList<Enemies> enemies = new ArrayList<>();
     private boolean isGameOver = false;
+    private GameTimer gameTimer;
 
     // Game state
     Maze maze;
@@ -45,19 +46,21 @@ public class GamePanel extends JPanel implements Runnable {
         maze = new Maze(maxScreenRow, maxScreenCol);
         mazeLayout = maze.getMaze();
         setupEnemies();
+        
+        // Initialize timer with 60 seconds
+        gameTimer = new GameTimer(player, this, 60);
     }
 
     private void setupEnemies() {
         enemies.clear();
         
         // Define safe zone for player (top-left area)
-        int safeZoneSize = 5; // 5 tiles from start
+        int safeZoneSize = 5;
         
-        // Find valid spawn positions (must be on paths and away from player start)
-        java.util.List<Point> validSpawnPoints = new java.util.ArrayList<>();
+        // Find valid spawn positions
+        ArrayList<Point> validSpawnPoints = new ArrayList<>();
         for (int row = 0; row < maxScreenRow; row++) {
             for (int col = 0; col < maxScreenCol; col++) {
-                // Check if it's a path and not in the safe zone
                 if (mazeLayout[row][col] == 1 && 
                     (row > safeZoneSize || col > safeZoneSize)) {
                     validSpawnPoints.add(new Point(col * tilesize, row * tilesize));
@@ -76,7 +79,6 @@ public class GamePanel extends JPanel implements Runnable {
                 enemy.setPosition(spawnPoint.x, spawnPoint.y);
                 enemies.add(enemy);
                 
-                // Remove used spawn point to avoid duplicates
                 validSpawnPoints.remove(index);
             }
         }
@@ -85,6 +87,7 @@ public class GamePanel extends JPanel implements Runnable {
     public void startGameThread() {
         gameThread = new Thread(this);
         gameThread.start();
+        gameTimer.startTimer();
     }
 
     @Override
@@ -110,6 +113,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     public void gameOver() {
         isGameOver = true;
+        gameTimer.stopTimer();
         
         Thread currentThread = gameThread;
         gameThread = null;
@@ -122,15 +126,11 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
         
-        JOptionPane.showMessageDialog(this, 
-            "Game Over! You were caught by the enemy!", 
-            "Game Over", 
-            JOptionPane.INFORMATION_MESSAGE);
-        
         int response = JOptionPane.showConfirmDialog(this, 
-            "Would you like to play again?", 
-            "Play Again?", 
-            JOptionPane.YES_NO_OPTION);
+            "Game Over! You were caught by the enemy!\nWould you like to play again?", 
+            "Game Over", 
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.INFORMATION_MESSAGE);
             
         if (response == JOptionPane.YES_OPTION) {
             resetGame();
@@ -139,7 +139,7 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
-    private void resetGame() {
+    public void resetGame() {
         if (gameThread != null) {
             gameThread = null;
             try {
@@ -149,12 +149,20 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
 
+        if (gameTimer != null) {
+            gameTimer.stopTimer();
+        }
+
         isGameOver = false;
         player.setGameOver(false);
         player.setDefaultValues();
         maze = new Maze(maxScreenRow, maxScreenCol);
         mazeLayout = maze.getMaze();
         setupEnemies();
+        
+        // Reset timer to 60 seconds
+        gameTimer = new GameTimer(player, this, 60);
+        
         startGameThread();
     }
 
@@ -172,6 +180,7 @@ public class GamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D)g;
 
+        // Draw maze
         for (int row = 0; row < maxScreenRow; row++) {
             for (int col = 0; col < maxScreenCol; col++) {
                 if (mazeLayout[row][col] == 0) {
@@ -183,17 +192,24 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
 
+        // Draw game elements if not game over
         if (!isGameOver) {
             player.draw(g2);
             for (Enemies enemy : enemies) {
                 enemy.draw(g2);
             }
+            
+            // Draw timer
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Arial", Font.BOLD, 24));
+            g2.drawString("Time: " + gameTimer.getTimeRemaining(), 10, 30);
         }
 
+        // Draw game over screen
         if (isGameOver) {
             g2.setColor(Color.RED);
             g2.setFont(new Font("Arial", Font.BOLD, 50));
-            String gameOverText = "GAME OVER!";
+            String gameOverText = gameTimer.getTimeRemaining() <= 0 ? "TIME'S UP!" : "GAME OVER!";
             int x = screenWidth/2 - g2.getFontMetrics().stringWidth(gameOverText)/2;
             int y = screenHeight/2;
             g2.drawString(gameOverText, x, y);
