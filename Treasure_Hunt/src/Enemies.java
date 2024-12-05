@@ -2,10 +2,15 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import javax.imageio.ImageIO;
+import java.util.Random;
 
 public class Enemies extends Entity {
     GamePanel gp;
     Player player;
+    Random random = new Random();
+    String[] possibleDirections = {"up", "down", "left", "right"};
+    private static final int DETECTION_RANGE = 150; // Distance to detect player
+    private boolean isChasing = false;
 
     public Enemies(GamePanel gp, Player player) {
         this.gp = gp;
@@ -19,7 +24,7 @@ public class Enemies extends Entity {
         x = 200;
         y = 200;
         speed = 2;
-        direction = "down";
+        direction = possibleDirections[random.nextInt(possibleDirections.length)];
     }
 
     public void getEnemyImage() {
@@ -37,46 +42,114 @@ public class Enemies extends Entity {
         }
     }
 
-    public void update() {
+    private boolean isPlayerNearby() {
+        // Calculate distance to player using Pythagorean theorem
+        int dx = Math.abs(player.x - x);
+        int dy = Math.abs(player.y - y);
+        double distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= DETECTION_RANGE;
+    }
+
+    private boolean canMove(int nextX, int nextY) {
+        int nextRow = nextY / gp.tilesize;
+        int nextCol = nextX / gp.tilesize;
+        
+        return nextRow >= 0 && nextCol >= 0 && 
+               nextRow < gp.maxScreenRow && nextCol < gp.maxScreenCol && 
+               gp.mazeLayout[nextRow][nextCol] == 1;
+    }
+
+    private String getRandomNewDirection() {
+        java.util.List<String> validDirections = new java.util.ArrayList<>();
+        
+        if (canMove(x, y - speed)) validDirections.add("up");
+        if (canMove(x, y + speed)) validDirections.add("down");
+        if (canMove(x - speed, y)) validDirections.add("left");
+        if (canMove(x + speed, y)) validDirections.add("right");
+        
+        validDirections.remove(direction);
+        
+        if (validDirections.isEmpty()) {
+            validDirections.add(direction);
+        }
+        
+        return validDirections.get(random.nextInt(validDirections.size()));
+    }
+
+    private void updatePatrolMovement() {
+        int nextX = x;
+        int nextY = y;
+        
+        switch(direction) {
+            case "up": nextY -= speed; break;
+            case "down": nextY += speed; break;
+            case "left": nextX -= speed; break;
+            case "right": nextX += speed; break;
+        }
+        
+        if (canMove(nextX, nextY)) {
+            x = nextX;
+            y = nextY;
+            if (random.nextInt(100) < 5) {
+                direction = getRandomNewDirection();
+            }
+        } else {
+            direction = getRandomNewDirection();
+        }
+    }
+
+    private void updateChaseMovement() {
+        int nextX = x;
+        int nextY = y;
+        
         // Calculate direction to player
         int diffX = player.x - x;
         int diffY = player.y - y;
         
-        // Store potential next position
-        int nextX = x;
-        int nextY = y;
-
-        // Move towards player while avoiding walls
-        if(Math.abs(diffX) > Math.abs(diffY)) {
-            if(diffX > 0) {
-                direction = "right";
-                nextX += speed;
+        // Determine primary direction based on larger difference
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            // Try horizontal movement first
+            nextX += diffX > 0 ? speed : -speed;
+            if (canMove(nextX, y)) {
+                x = nextX;
+                direction = diffX > 0 ? "right" : "left";
             } else {
-                direction = "left";
-                nextX -= speed;
+                // Try vertical movement if horizontal fails
+                nextY += diffY > 0 ? speed : -speed;
+                if (canMove(x, nextY)) {
+                    y = nextY;
+                    direction = diffY > 0 ? "down" : "up";
+                }
             }
         } else {
-            if(diffY > 0) {
-                direction = "down";
-                nextY += speed;
+            // Try vertical movement first
+            nextY += diffY > 0 ? speed : -speed;
+            if (canMove(x, nextY)) {
+                y = nextY;
+                direction = diffY > 0 ? "down" : "up";
             } else {
-                direction = "up";
-                nextY -= speed;
+                // Try horizontal movement if vertical fails
+                nextX += diffX > 0 ? speed : -speed;
+                if (canMove(nextX, y)) {
+                    x = nextX;
+                    direction = diffX > 0 ? "right" : "left";
+                }
             }
         }
+    }
+
+    public void update() {
+        // Check if player is nearby
+        isChasing = isPlayerNearby();
         
-        // Check if next position is valid (not a wall)
-        int nextRow = nextY / gp.tilesize;
-        int nextCol = nextX / gp.tilesize;
-        
-        if(nextRow >= 0 && nextCol >= 0 && 
-           nextRow < gp.maxScreenRow && nextCol < gp.maxScreenCol && 
-           gp.mazeLayout[nextRow][nextCol] == 1) {
-            x = nextX;
-            y = nextY;
+        // Update movement based on mode
+        if (isChasing) {
+            updateChaseMovement();
+        } else {
+            updatePatrolMovement();
         }
 
-        // Animation
+        // Update animation
         SpriteCounter++;
         if(SpriteCounter > 15) {
             spriteNumber = (spriteNumber == 1) ? 2 : 1;
@@ -102,6 +175,7 @@ public class Enemies extends Entity {
                 break;
         }
 
-        g2.drawImage(image, x, y, gp.tilesize, gp.tilesize, null);
+        int size = gp.originalTileSize * gp.scale;
+        g2.drawImage(image, x, y, size, size, null);
     }
 }
