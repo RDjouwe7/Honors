@@ -26,6 +26,11 @@ public class Enemies extends Entity {
         speed = 2;
         direction = possibleDirections[random.nextInt(possibleDirections.length)];
     }
+    
+    public void setPosition(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
 
     public void getEnemyImage() {
         try {
