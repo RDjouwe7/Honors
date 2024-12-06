@@ -6,7 +6,8 @@ import javax.imageio.ImageIO;
 public class Player extends Entity {
     GamePanel gp;
     KeyHandler keyH;
-    private boolean isGameOver; // Tracks if the player is in a game-over state
+    private boolean isGameOver;
+    private static final int COLLISION_DISTANCE = 30; // Added collision distance constant
 
     public Player(GamePanel gp, KeyHandler keyH) {
         this.gp = gp;
@@ -21,7 +22,7 @@ public class Player extends Entity {
         y = 100;
         speed = 4;
         direction = "down";
-        isGameOver = false; // Initialize game-over state to false
+        isGameOver = false;
     }
 
     public void getPlayerImage() {
@@ -39,12 +40,26 @@ public class Player extends Entity {
         }
     }
 
+    public boolean checkEnemyCollision() {
+        for (Enemies enemy : gp.enemies) {
+            // Calculate distance between player and enemy centers
+            int dx = Math.abs((x + gp.tilesize/2) - (enemy.x + gp.tilesize/2));
+            int dy = Math.abs((y + gp.tilesize/2) - (enemy.y + gp.tilesize/2));
+            
+            if (dx < COLLISION_DISTANCE && dy < COLLISION_DISTANCE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void update() {
-        if (!isGameOver && (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed)) {
+        if (isGameOver) return;
+
+        if (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
             int nextX = x;
             int nextY = y;
 
-            // Determine the next position based on the key pressed
             if (keyH.upPressed) {
                 direction = "up";
                 nextY -= speed;
@@ -59,23 +74,26 @@ public class Player extends Entity {
                 nextX += speed;
             }
 
-            // Calculate the row and column in the maze for the next position
             int nextRow = nextY / gp.tilesize;
             int nextCol = nextX / gp.tilesize;
 
-            // Check if the next cell is a path (1) and within maze bounds
             if (nextRow >= 0 && nextCol >= 0 && nextRow < gp.maxScreenRow && nextCol < gp.maxScreenCol
                 && gp.mazeLayout[nextRow][nextCol] == 1) {
                 x = nextX;
                 y = nextY;
             }
 
-            // Animation
             SpriteCounter++;
             if (SpriteCounter > 15) {
                 spriteNumber = (spriteNumber == 1) ? 2 : 1;
                 SpriteCounter = 0;
             }
+        }
+
+        // Check for enemy collision
+        if (checkEnemyCollision()) {
+            isGameOver = true;
+            gp.gameOver();
         }
     }
 
@@ -100,12 +118,11 @@ public class Player extends Entity {
         g2.drawImage(image, x, y, gp.tilesize, gp.tilesize, null);
     }
 
-    // Sets the game-over state
+    // Getter and setter for isGameOver
     public void setGameOver(boolean isGameOver) {
         this.isGameOver = isGameOver;
     }
 
-    // Gets the current game-over state
     public boolean isGameOver() {
         return isGameOver;
     }
