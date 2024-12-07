@@ -200,7 +200,7 @@ public class GamePanel extends JPanel implements Runnable {
             }
             
             // Draw timer
-            g2.setColor(Color.WHITE);
+            g2.setColor(Color.RED);
             g2.setFont(new Font("Arial", Font.BOLD, 24));
             g2.drawString("Time: " + gameTimer.getTimeRemaining(), 10, 30);
         }
