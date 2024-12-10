@@ -31,6 +31,7 @@ public class Maze {
             doorClosedImage = ImageIO.read(getClass().getResourceAsStream("/Walking sprites/door_closed.png"));
             doorOpenedImage = ImageIO.read(getClass().getResourceAsStream("/Walking sprites/door_opened.png"));
         } catch (IOException e) {
+            System.out.println("Error loading door image at: /Walking sprites/door_closed.png");
             e.printStackTrace();
         }
     }
