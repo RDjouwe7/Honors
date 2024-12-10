@@ -9,8 +9,9 @@ import java.util.ArrayList;
 import java.awt.Point;
 import java.util.Random;
 
+// GamePanel handles game logic, player updates and rendering
 public class GamePanel extends JPanel implements Runnable {
-    // Screen settings
+    // Define the game screen dimensions, tile size, and FPS
     final int originalTileSize = 16;
     final int scale = 3;
     public final int tilesize = originalTileSize * scale;
@@ -19,45 +20,47 @@ public class GamePanel extends JPanel implements Runnable {
     final int screenWidth = tilesize * maxScreenCol;
     final int screenHeight = tilesize * maxScreenRow;
 
-    // FPS
+    // FPS (frames per second)
     int FPS = 60;
 
-    // System
-    KeyHandler KeyH = new KeyHandler();
-    Thread gameThread;
-    Player player;
-    public ArrayList<Enemies> enemies = new ArrayList<>();
-    private boolean isGameOver = false;
-    private GameTimer gameTimer;
+    // System components
+    KeyHandler KeyH = new KeyHandler();  // Key handler for player controls
+    Thread gameThread;  // The game loop thread
+    Player player;  // Reference to the player entity
+    public ArrayList<Enemies> enemies = new ArrayList<>();  // List of enemies
+    private boolean isGameOver = false;  // Track game-over state
+    private GameTimer gameTimer;  // Timer that counts down the game time
 
-    // Game state
-    Maze maze;
-    int[][] mazeLayout;
+    // Game state variables
+    Maze maze; // The maze (game map)
+    int[][] mazeLayout; // 2D layout representing the maze structure 
 
     public GamePanel() {
+        // Set the prefered size for the game panel (screen size)
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
-        this.setBackground(Color.black);
-        this.setDoubleBuffered(true);
-        this.addKeyListener(KeyH);
-        this.setFocusable(true);
+        this.setBackground(Color.black);  // Set the background color to black
+        this.setDoubleBuffered(true);  // Enable double buffering for smooter rendering
+        this.addKeyListener(KeyH);  // Add key listener for player input
+        this.setFocusable(true);  // Make this panel focusable for key events
 
         // Initialize game components
-        player = new Player(this, KeyH);
-        maze = new Maze(maxScreenRow, maxScreenCol);
-        mazeLayout = maze.getMaze();
-        setupEnemies();
+        player = new Player(this, KeyH);  // Create a new player
+        maze = new Maze(maxScreenRow, maxScreenCol);  // Create a new maze
+        mazeLayout = maze.getMaze();  // Get the maze layout
+        setupEnemies();  // Set up enemies in the game
         
-        // Initialize timer with 60 seconds
+        // Initialize timer with a 60-second countdown
         gameTimer = new GameTimer(player, this, 60);
     }
 
+    // Set up enemies at random valid positions in the maze
     private void setupEnemies() {
-        enemies.clear();
+        enemies.clear(); // Clear any previous enemies
         
         // Define safe zone for player (top-left area)
         int safeZoneSize = 5;
         
-        // Find valid spawn positions
+        // Create a list of valid spawn points for enemies (locations that are not blocked by walls)
         ArrayList<Point> validSpawnPoints = new ArrayList<>();
         for (int row = 0; row < maxScreenRow; row++) {
             for (int col = 0; col < maxScreenCol; col++) {
@@ -68,7 +71,7 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
         
-        // Spawn enemies at random valid positions
+        // Spawn 3 enemies at random valid positions
         Random random = new Random();
         for (int i = 0; i < 3; i++) {
             if (!validSpawnPoints.isEmpty()) {
@@ -84,29 +87,31 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
+    // Start the game loop thread
     public void startGameThread() {
-        gameThread = new Thread(this);
-        gameThread.start();
-        gameTimer.startTimer();
+        gameThread = new Thread(this); // Create a new game thread
+        gameThread.start(); // Start the game loop
+        gameTimer.startTimer(); // Start the timer
     }
 
     @Override
     public void run() {
-        double drawInterval = 1000000000/FPS;
-        double delta = 0;
-        long lastTime = System.nanoTime();
+        double drawInterval = 1000000000/FPS; // Time interval between each frame
+        double delta = 0; // Accumulated time
+        long lastTime = System.nanoTime(); // Track the last time a frame was drawn
         long currentTime;
         Thread thisThread = Thread.currentThread();
 
+        // Game loop
         while(gameThread == thisThread) {
             currentTime = System.nanoTime();
             delta += (currentTime - lastTime) / drawInterval;
             lastTime = currentTime;
 
             if(delta >= 1) {
-                update();
-                repaint();
-                delta--;
+                update(); // Update game state
+                repaint(); // Render the new frame
+                delta--; // Reduce delta
             }
         }
     }
@@ -139,42 +144,46 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
+        
+    // Reset the game to the initial state
     public void resetGame() {
         if (gameThread != null) {
-            gameThread = null;
+            gameThread = null;  // Stop the current game thread
             try {
-                Thread.sleep(1000);
+                Thread.sleep(1000);  // Wait before restarting
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
 
         if (gameTimer != null) {
-            gameTimer.stopTimer();
+            gameTimer.stopTimer();  // Stop the timer
         }
 
-        isGameOver = false;
-        player.setGameOver(false);
-        player.setDefaultValues();
-        maze = new Maze(maxScreenRow, maxScreenCol);
-        mazeLayout = maze.getMaze();
-        setupEnemies();
+        isGameOver = false;  // Rest game-over state
+        player.setGameOver(false);  // Reset player game-over state
+        player.setDefaultValues();  // Reset player properties
+        maze = new Maze(maxScreenRow, maxScreenCol);  // Create a new maze
+        mazeLayout = maze.getMaze();  //Get the new maze layout
+        setupEnemies();  // Set up enemies again
         
         // Reset timer to 60 seconds
         gameTimer = new GameTimer(player, this, 60);
-        
         startGameThread();
     }
 
+    
+    // Update the game state (player, enemies, etc.)
     public void update() {
         if (!isGameOver) {
-            player.update();
+            player.update(); // Update player state
+            // Update each enemy's state
             for (Enemies enemy : enemies) {
                 enemy.update();
             }
         }
     }
-
+    
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -184,13 +193,19 @@ public class GamePanel extends JPanel implements Runnable {
         for (int row = 0; row < maxScreenRow; row++) {
             for (int col = 0; col < maxScreenCol; col++) {
                 if (mazeLayout[row][col] == 0) {
-                    g2.setColor(Color.darkGray);
+                    g2.setColor(Color.darkGray); // Wall color
                 } else {
-                    g2.setColor(Color.lightGray);
+                    g2.setColor(Color.lightGray); // Path color
                 }
                 g2.fillRect(col * tilesize, row * tilesize, tilesize, tilesize);
             }
         }
+
+        // Draw the door
+        maze.drawDoor(g2, tilesize);  // Directly access maze to draw the door
+
+        // Draw the player
+        player.draw(g2);
 
         // Draw game elements if not game over
         if (!isGameOver) {
@@ -210,8 +225,8 @@ public class GamePanel extends JPanel implements Runnable {
             g2.setColor(Color.RED);
             g2.setFont(new Font("Arial", Font.BOLD, 50));
             String gameOverText = gameTimer.getTimeRemaining() <= 0 ? "TIME'S UP!" : "GAME OVER!";
-            int x = screenWidth/2 - g2.getFontMetrics().stringWidth(gameOverText)/2;
-            int y = screenHeight/2;
+            int x = screenWidth / 2 - g2.getFontMetrics().stringWidth(gameOverText) / 2;
+            int y = screenHeight / 2;
             g2.drawString(gameOverText, x, y);
         }
 
