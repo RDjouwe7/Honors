@@ -180,7 +180,7 @@ public class Enemies extends Entity {
                 break;
         }
 
-        int size = gp.originalTileSize * gp.scale * 2;
+        int size = gp.originalTileSize * gp.scale * 3;
         g2.drawImage(image, x, y, size, size, null);
     }
 }
